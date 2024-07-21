@@ -10,29 +10,48 @@
           <input v-model="newAuthor" placeholder="Автор" required />
           <input v-model="newTag" placeholder="Тэг" required />
           <textarea v-model="newPost" placeholder="Пост" required></textarea>
-          <button type="submit">Добавить</button>
+          <Button>Добавить</Button>
         </form>
       </div>
       <div class="todos-container">
-        <todo-table :todos="todos" @deleteTodo="deleteTodo"></todo-table>
+        <div class="sort-controls">
+          <Button @click="sortBy('author')">Сортировка по автору</Button>
+          <Button @click="sortBy('tag')">Сортировка по тегу</Button>
+          <Button @click="sortBy('none')">Без сортировки</Button>
+        </div>
+        <todo-table :todos="sortedTodos" @deleteTodo="showConfirmDialog"></todo-table>
+        <p v-if="todos.length === 0">Нет записей для отображения</p>
       </div>
     </div>
+    <confirmation-dialog 
+      :isVisible="isDialogVisible" 
+      message="Вы уверены, что хотите удалить запись?" 
+      @confirm="handleConfirmDelete" 
+      @cancel="handleCancelDelete">
+    </confirmation-dialog>
   </div>
 </template>
 
 <script>
 import TodoTable from './components/TodoTable.vue';
+import Button from './components/UI/Button.vue';
+import ConfirmationDialog from './components/UI/ConfirmationDialog.vue';
 
 export default {
   components: {
-    TodoTable
+    TodoTable,
+    Button,
+    ConfirmationDialog
   },
   data() {
     return {
       newAuthor: '',
       newTag: '',
       newPost: '',
-      todos: []
+      todos: [],
+      sortOrder: 'none',
+      isDialogVisible: false,
+      deleteIndex: null
     };
   },
   methods: {
@@ -46,8 +65,37 @@ export default {
       this.newTag = '';
       this.newPost = '';
     },
+    showConfirmDialog(index) {
+      this.deleteIndex = index;
+      this.isDialogVisible = true;
+    },
+    handleConfirmDelete() {
+      if (this.deleteIndex !== null) {
+        this.deleteTodo(this.deleteIndex);
+        this.deleteIndex = null;
+      }
+      this.isDialogVisible = false;
+    },
+    handleCancelDelete() {
+      this.deleteIndex = null;
+      this.isDialogVisible = false;
+    },
     deleteTodo(index) {
       this.todos.splice(index, 1);
+    },
+    sortBy(order) {
+      this.sortOrder = order;
+    }
+  },
+  computed: {
+    sortedTodos() {
+      if (this.sortOrder === 'author') {
+        return [...this.todos].sort((a, b) => a.author.localeCompare(b.author));
+      } else if (this.sortOrder === 'tag') {
+        return [...this.todos].sort((a, b) => a.tag.split(',').length - b.tag.split(',').length);
+      } else {
+        return this.todos;
+      }
     }
   }
 };
@@ -58,7 +106,9 @@ export default {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   text-align: center;
   color: #2c3e50;
+  background-color: #2c3e50;
   margin-top: 60px;
+  min-height: 100vh;
 }
 header {
   position: fixed;
@@ -91,6 +141,9 @@ header p {
   padding: 20px;
   max-width: 700px;
 }
+.sort-controls {
+  margin-bottom: 20px;
+}
 form {
   display: flex;
   flex-direction: column;
@@ -103,16 +156,5 @@ form input, form textarea {
 }
 form textarea {
   height: 100px;
-}
-form button {
-  padding: 10px;
-  font-size: 16px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-form button:hover {
-  background-color: #369b74;
 }
 </style>
